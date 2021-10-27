@@ -8,30 +8,52 @@
 //*****************************************************************************
 //Librerias
 //*****************************************************************************
-#include <Arduino.h>
+#include <Arduino.h>    //Librería de Arduino
+#include <Ultrasonic.h> //Librería de sensor ultrasónico
 
 //*****************************************************************************
 //Definicion etiquetas
 //*****************************************************************************
 
+//Pines para Sensor ultrasónico
+#define PIN_TRIGGER 26
+#define PIN_ECHO 27
+Ultrasonic ultrasonic(PIN_TRIGGER, PIN_ECHO);
+
 //*****************************************************************************
 //Prototipos de funcion
 //*****************************************************************************
+void getDistance(void);
 
 //*****************************************************************************
 //Varibles globales
 //*****************************************************************************
+int distancia = 0; //Distancia tomada por el sensor
 
 //*****************************************************************************
 //Configuracion
 //*****************************************************************************
-void setup() {
-  // put your setup code here, to run once:
+void setup()
+{
+  Serial.begin(115200);
 }
 
 //*****************************************************************************
 //Loop principal
 //*****************************************************************************
-void loop() {
-  // put your main code here, to run repeatedly:
+void loop()
+{
+  getDistance();
+  Serial.print("\nLa distancia medida es de: ");
+  Serial.print(distancia);
+  Serial.print(" cm");
+  delay(1000);
+}
+
+//*****************************************************************************
+//Tomar distancia con sensor
+//*****************************************************************************
+void getDistance(void)
+{
+  distancia = ultrasonic.read();
 }

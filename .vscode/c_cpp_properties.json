@@ -10,6 +10,7 @@
             "includePath": [
                 "C:/Users/salgu/Documents/Digital2/Proyecto-2/include",
                 "C:/Users/salgu/Documents/Digital2/Proyecto-2/src",
+                "C:/Users/salgu/Documents/Digital2/Proyecto-2/.pio/libdeps/esp32dev/Ultrasonic/src",
                 "C:/Users/salgu/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/config",
                 "C:/Users/salgu/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/app_trace",
                 "C:/Users/salgu/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/app_update",
@@ -108,6 +109,7 @@
                 "path": [
                     "C:/Users/salgu/Documents/Digital2/Proyecto-2/include",
                     "C:/Users/salgu/Documents/Digital2/Proyecto-2/src",
+                    "C:/Users/salgu/Documents/Digital2/Proyecto-2/.pio/libdeps/esp32dev/Ultrasonic/src",
                     "C:/Users/salgu/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/config",
                     "C:/Users/salgu/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/app_trace",
                     "C:/Users/salgu/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/app_update",
@@ -203,7 +205,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=50201",
+                "PLATFORMIO=50202",
                 "ARDUINO_ESP32_DEV",
                 "ESP32",
                 "ESP_PLATFORM",
