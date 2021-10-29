@@ -3,6 +3,7 @@
 // BE3015: Electrónica Digital 2
 // Sofía Salguero - 19236
 // Proyecto # 2
+// Código para ESP 32
 //*****************************************************************************
 
 //*****************************************************************************
@@ -18,7 +19,6 @@
 //Pines para Sensor ultrasónico
 #define PIN_TRIGGER 26
 #define PIN_ECHO 27
-Ultrasonic ultrasonic(PIN_TRIGGER, PIN_ECHO);
 
 //*****************************************************************************
 //Prototipos de funcion
@@ -29,6 +29,7 @@ void getDistance(void);
 //Varibles globales
 //*****************************************************************************
 int distancia = 0; //Distancia tomada por el sensor
+Ultrasonic ultrasonic(PIN_TRIGGER, PIN_ECHO);
 
 //*****************************************************************************
 //Configuracion
