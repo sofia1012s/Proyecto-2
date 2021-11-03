@@ -49,6 +49,10 @@
 #define MOSI1 PF_1
 #define SCK1 PF_2
 #define CS1 PF_3
+
+//Buzzer
+#define buzzerPin PF_2
+#define NOTE_C4_1 260
 //*****************************************************************************
 //Varibles globales
 //*****************************************************************************
@@ -100,6 +104,8 @@ void LCD_Sprite(int x, int y, int width, int height, unsigned char bitmap[], int
 
 void botones(void);
 
+void sensor(void);
+
 //***************************************************************************************************************************************
 // Configuración
 //***************************************************************************************************************************************
@@ -143,8 +149,51 @@ void setup()
 void loop()
 {
   botones();
-  writeSD();
+  sensor();
+
+  LCD_Print(String(centena), 150, 130, 2, 0x0000, 0xFF01);
+  LCD_Print(String(decena), 165, 130, 2, 0x0000, 0xFF01);
+  LCD_Print(String(unidad), 180, 130, 2, 0x0000, 0xFF01);
+  LCD_Print("cm", 210, 130, 2, 0x0000, 0xFF01);
+
+  int reading = digitalRead(PUSH2);
+
+  if (reading == 0) {
+    tone(buzzerPin, 783.99);
+    delay(100);
+    noTone(buzzerPin);
+    delay(50);
+    tone(buzzerPin, 523.25);
+    delay(100);
+    noTone(buzzerPin);
+    delay(50);
+
+    writeSD();
+    reading = 1;
+  }
+
+}
+
+//***************************************************************************************************************************************
+// Función para tomar datos del sensor
+//***************************************************************************************************************************************
+void sensor(void)
+{
   Serial2.write(buttonState1); //Escribe en UART2
+
+  if (buttonState1 == 0)
+  {
+    tone(buzzerPin, 523.25);
+    delay(100);
+    noTone(buzzerPin);
+    delay(50);
+    tone(buzzerPin, 783.99);
+    delay(100);
+    noTone(buzzerPin);
+    delay(50);
+
+  }
+
   distancia = Serial2.read(); //Lee en UART2
 
   int temp = distancia;
@@ -158,14 +207,7 @@ void loop()
   Serial.print(distancia);
   Serial.print(" cm");
 
-  LCD_Print(String(centena), 150, 130, 2, 0x0000, 0xFF01);
-  LCD_Print(String(decena), 165, 130, 2, 0x0000, 0xFF01);
-  LCD_Print(String(unidad), 180, 130, 2, 0x0000, 0xFF01);
-  LCD_Print("cm", 210, 130, 2, 0x0000, 0xFF01);
-
-
 }
-
 //***************************************************************************************************************************************
 // Función para botones
 //***************************************************************************************************************************************
@@ -193,88 +235,52 @@ void botones(void)
   // save the reading.  Next time through the loop,
   // it'll be the lastButtonState:
   lastButtonState1 = reading1;
-
-  // read the state of the switch into a local variable:
-  int reading2 = digitalRead(PUSH2);
-
-  // check to see if you just pressed the button
-  // (i.e. the input went from LOW to HIGH),  and you've waited
-  // long enough since the last press to ignore any noise:
-
-  // If the switch changed, due to noise or pressing:
-  if (reading2 != lastButtonState2) {
-    // reset the debouncing timer
-    lastDebounceTime2 = millis();
-  }
-
-  if ((millis() - lastDebounceTime2) > debounceDelay2) {
-    // whatever the reading is at, it's been there for longer
-    // than the debounce delay, so take it as the actual current state:
-    buttonState2 = reading2;
-  }
-
-  // save the reading.  Next time through the loop,
-  // it'll be the lastButtonState:
-  lastButtonState2 = reading2;
 }
 //***************************************************************************************************************************************
 // Función para leer SD
 //***************************************************************************************************************************************
-void readSD(void)
-{
-  archivo = SD.open("DATA.CSV");
-  if (archivo)
-  {
+void readSD(void) {
+  archivo = SD.open("data.csv");
+  if (archivo) {
     Serial.println("El archivo contiene lo siguiente:");
 
     // read from the file until there's nothing else in it:
-    while (archivo.available())
-    {
+    while (archivo.available()) {
       Serial.write(archivo.read());
     }
     // close the file:
     archivo.close();
-  }
-  else
-  {
+  } else {
     // if the file didn't open, print an error:
     Serial.println("error opening test.txt");
   }
 }
 
 //***************************************************************************************************************************************
-// Función para escribir en SD
+// Función para escribir SD
 //***************************************************************************************************************************************
+
 void writeSD(void)
 {
-
-  archivo = SD.open("DATA.CSV", FILE_WRITE);
+  archivo = SD.open("data.csv", FILE_WRITE);
 
   // if the file opened okay, write to it:
-  if (archivo)
-  {
-    if (buttonState2 == 0)
-    {
-      Serial.println("Escribiendo data");
+  if (archivo) {
+    Serial.println("\nEscribiendo data");
 
-      Serial.print("Distancia: ");
-      Serial.print(distancia);
+    Serial.print("Distancia: ");
+    Serial.println(distancia);
 
-      archivo.print(distancia);
-      archivo.println(",");
-
-      // close the file:
-      archivo.close();
-      Serial.println("done.");
-    }
-  }
-  else
-  {
+    archivo.print(distancia);
+    archivo.println(",");
+    archivo.close();
+    Serial.println("done.");
+  } else {
     // if the file didn't open, print an error:
     Serial.println("error opening data.csv");
   }
-}
 
+}
 //***************************************************************************************************************************************
 // Función para inicializar LCD
 //***************************************************************************************************************************************
