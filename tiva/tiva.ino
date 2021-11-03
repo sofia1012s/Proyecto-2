@@ -37,18 +37,44 @@
 //Definicion etiquetas
 //*****************************************************************************
 
-//Etiquetas para Pantalla LCD
+//Puertos Pantalla LCD
 #define LCD_RST PD_0
 #define LCD_CS PD_1
 #define LCD_RS PD_2
 #define LCD_WR PD_3
 #define LCD_RD PE_1
 
+//Variables para SPI con ESP32
+#define MISO1 PF_0
+#define MOSI1 PF_1
+#define SCK1 PF_2
+#define CS1 PF_3
 //*****************************************************************************
 //Varibles globales
 //*****************************************************************************
-int DPINS[] = {PB_0, PB_1, PB_2, PB_3, PB_4, PB_5, PB_6, PB_7}; //Pines de Pantalla TFT
-File archivo; //Objeto de tipo archivo
+
+//Pantalla TFT
+int DPINS[] = {PB_0, PB_1, PB_2, PB_3, PB_4, PB_5, PB_6, PB_7}; //Pines
+extern uint8_t fondo[]; //Fondo
+
+//SD
+File archivo;                                                   //Objeto de tipo archivo para escribir en micro SD
+
+//Botones
+int buttonState1;             // the current reading from the input pin
+int lastButtonState1 = LOW;   // the previous reading from the input pin
+long lastDebounceTime1 = 0;  // the last time the output pin was toggled
+long debounceDelay1 = 50;    // the debounce time; increase if the output flickers
+
+int buttonState2;             // the current reading from the input pin
+int lastButtonState2 = LOW;   // the previous reading from the input pin
+long lastDebounceTime2 = 0;  // the last time the output pin was toggled
+long debounceDelay2 = 50;    // the debounce time; increase if the output flickers
+
+byte distancia = 0;
+int centena = 0;
+int decena = 0;
+int unidad = 0;
 
 //***************************************************************************************************************************************
 // Prototipo de funciones
@@ -71,107 +97,182 @@ void FillRect(unsigned int x, unsigned int y, unsigned int w, unsigned int h, un
 void LCD_Print(String text, int x, int y, int fontSize, int color, int background);
 void LCD_Bitmap(unsigned int x, unsigned int y, unsigned int width, unsigned int height, unsigned char bitmap[]);
 void LCD_Sprite(int x, int y, int width, int height, unsigned char bitmap[], int columns, int index, char flip, char offset);
-extern uint8_t fondo[];
+
+void botones(void);
 
 //***************************************************************************************************************************************
 // Configuración
 //***************************************************************************************************************************************
 void setup()
 {
+  //Botones
+  pinMode(PUSH1, INPUT_PULLUP);
+  pinMode(PUSH2, INPUT_PULLUP);
 
   //Pantalla TFT
   SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
   Serial.begin(115200);
   GPIOPadConfigSet(GPIO_PORTB_BASE, 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD_WPU);
-  Serial.println("Inicio");
+  //Serial.println("Inicio");
   LCD_Init();
   LCD_Clear(0x00);
-  FillRect(0, 0, 319, 239, 0xFFFF);
-  FillRect(50, 60, 20, 20, 0xF800);
-  FillRect(70, 60, 20, 20, 0x07E0);
-  FillRect(90, 60, 20, 20, 0x001F);
+  LCD_Bitmap(0, 0, 320, 240, fondo);
 
-  //FillRect(0, 0, 319, 206, 0x421b);
-  String text1 = "Holi :)";
-  LCD_Print(text1, 20, 200, 2, 0x001F, 0xCAB9);
 
-  //LCD_Bitmap(60, 100, 32, 32, prueba);
+  //Micro SD
+  pinMode(PA_3, OUTPUT);
+  SPI.setModule(0);
 
-  //LCD_Print(text1, 20, 100, 2, 0xffff, 0x421b);
-  //LCD_Sprite(int x, int y, int width, int height, unsigned char bitmap[],int columns, int index, char flip, char offset);
-  //LCD_Sprite(60,100,32,32,pesaSprite,4,3,0,1);
-  //LCD_Bitmap(unsigned int x, unsigned int y, unsigned int width, unsigned int height, unsigned char bitmap[]);
-  //LCD_Bitmap(0, 0, 320, 240, fondo);
+  // Estamos Inicializando la tarjeta SD
+  if (!SD.begin(PA_3))
+  {
+    Serial.println("initialization failed!");
+    return;
+  }
 
-  /*for(int x = 0; x <319; x++){
-    LCD_Bitmap(x, 52, 16, 16, tile2);
-    LCD_Bitmap(x, 68, 16, 16, tile);
 
-    LCD_Bitmap(x, 207, 16, 16, tile);
-    LCD_Bitmap(x, 223, 16, 16, tile);
-    x += 15;
-    }*/
+  //UART con ESP32
+  Serial.begin(115200);
+  Serial2.begin(115200);
+
+
 }
 //***************************************************************************************************************************************
 // Loop principal
 //***************************************************************************************************************************************
 void loop()
 {
+  botones();
+  writeSD();
+  Serial2.write(buttonState1); //Escribe en UART2
+  distancia = Serial2.read(); //Lee en UART2
 
-  //Pantalla TFT
-  for (int x = 0; x < 320 - 32; x++)
-  {
-    int anim2 = (x / 35) % 4;
-    LCD_Sprite(60, 100, 32, 32, pesaSprite, 4, anim2, 0, 1);
-    delay(15);
+  int temp = distancia;
+  centena = temp / 100.0;
+  temp = temp - centena * 100.0;
+  decena = temp / 10.0;
+  temp = temp - decena * 10.0;
+  unidad = temp;
+
+  Serial.print("\nLa distancia medida es de: ");
+  Serial.print(distancia);
+  Serial.print(" cm");
+
+  LCD_Print(String(centena), 150, 130, 2, 0x0000, 0xFF01);
+  LCD_Print(String(decena), 165, 130, 2, 0x0000, 0xFF01);
+  LCD_Print(String(unidad), 180, 130, 2, 0x0000, 0xFF01);
+  LCD_Print("cm", 210, 130, 2, 0x0000, 0xFF01);
+
+
+}
+
+//***************************************************************************************************************************************
+// Función para botones
+//***************************************************************************************************************************************
+void botones(void)
+{
+  // read the state of the switch into a local variable:
+  int reading1 = digitalRead(PUSH1);
+
+  // check to see if you just pressed the button
+  // (i.e. the input went from LOW to HIGH),  and you've waited
+  // long enough since the last press to ignore any noise:
+
+  // If the switch changed, due to noise or pressing:
+  if (reading1 != lastButtonState1) {
+    // reset the debouncing timer
+    lastDebounceTime1 = millis();
   }
-  /* for(int x = 0; x <320-32; x++){
-     delay(15);
-     int anim2 = (x/35)%2;
 
-     LCD_Sprite(x,100,16,24,planta,2,anim2,0,1);
-     V_line( x -1, 100, 24, 0x421b);
+  if ((millis() - lastDebounceTime1) > debounceDelay1) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    buttonState1 = reading1;
+  }
 
-     //LCD_Bitmap(x, 100, 32, 32, prueba);
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonState1 = reading1;
 
-     int anim = (x/11)%8;
+  // read the state of the switch into a local variable:
+  int reading2 = digitalRead(PUSH2);
 
+  // check to see if you just pressed the button
+  // (i.e. the input went from LOW to HIGH),  and you've waited
+  // long enough since the last press to ignore any noise:
 
-     int anim3 = (x/11)%4;
+  // If the switch changed, due to noise or pressing:
+  if (reading2 != lastButtonState2) {
+    // reset the debouncing timer
+    lastDebounceTime2 = millis();
+  }
 
-     LCD_Sprite(x, 20, 16, 32, mario,8, anim,1, 0);
-     V_line( x -1, 20, 32, 0x421b);
+  if ((millis() - lastDebounceTime2) > debounceDelay2) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    buttonState2 = reading2;
+  }
 
-     //LCD_Sprite(x,100,32,32,bowser,4,anim3,0,1);
-     //V_line( x -1, 100, 32, 0x421b);
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonState2 = reading2;
+}
+//***************************************************************************************************************************************
+// Función para leer SD
+//***************************************************************************************************************************************
+void readSD(void)
+{
+  archivo = SD.open("DATA.CSV");
+  if (archivo)
+  {
+    Serial.println("El archivo contiene lo siguiente:");
 
-
-     LCD_Sprite(x, 140, 16, 16, enemy,2, anim2,1, 0);
-     V_line( x -1, 140, 16, 0x421b);
-
-     LCD_Sprite(x, 175, 16, 32, luigi,8, anim,1, 0);
-     V_line( x -1, 175, 32, 0x421b);
+    // read from the file until there's nothing else in it:
+    while (archivo.available())
+    {
+      Serial.write(archivo.read());
     }
-    for(int x = 320-32; x >0; x--){
-     delay(5);
-     int anim = (x/11)%8;
-     int anim2 = (x/11)%2;
+    // close the file:
+    archivo.close();
+  }
+  else
+  {
+    // if the file didn't open, print an error:
+    Serial.println("error opening test.txt");
+  }
+}
 
-     LCD_Sprite(x,100,16,24,planta,2,anim2,0,0);
-     V_line( x + 16, 100, 24, 0x421b);
+//***************************************************************************************************************************************
+// Función para escribir en SD
+//***************************************************************************************************************************************
+void writeSD(void)
+{
 
-     //LCD_Bitmap(x, 100, 32, 32, prueba);
+  archivo = SD.open("DATA.CSV", FILE_WRITE);
 
-     //LCD_Sprite(x, 140, 16, 16, enemy,2, anim2,0, 0);
-     //V_line( x + 16, 140, 16, 0x421b);
+  // if the file opened okay, write to it:
+  if (archivo)
+  {
+    if (buttonState2 == 0)
+    {
+      Serial.println("Escribiendo data");
 
-     //LCD_Sprite(x, 175, 16, 32, luigi,8, anim,0, 0);
-     //V_line( x + 16, 175, 32, 0x421b);
+      Serial.print("Distancia: ");
+      Serial.print(distancia);
 
-     //LCD_Sprite(x, 20, 16, 32, mario,8, anim,0, 0);
-     //V_line( x + 16, 20, 32, 0x421b);
+      archivo.print(distancia);
+      archivo.println(",");
+
+      // close the file:
+      archivo.close();
+      Serial.println("done.");
     }
-  */
+  }
+  else
+  {
+    // if the file didn't open, print an error:
+    Serial.println("error opening data.csv");
+  }
 }
 
 //***************************************************************************************************************************************
@@ -446,7 +547,7 @@ void LCD_Print(String text, int x, int y, int fontSize, int color, int backgroun
 
   char charInput;
   int cLength = text.length();
-  Serial.println(cLength, DEC);
+  //Serial.println(cLength, DEC);
   int charDec;
   int c;
   int charHex;
@@ -455,7 +556,7 @@ void LCD_Print(String text, int x, int y, int fontSize, int color, int backgroun
   for (int i = 0; i < cLength; i++)
   {
     charInput = char_array[i];
-    Serial.println(char_array[i]);
+    //Serial.println(char_array[i]);
     charDec = int(charInput);
     digitalWrite(LCD_CS, LOW);
     SetWindows(x + (i * fontXSize), y, x + (i * fontXSize) + fontXSize - 1, y + fontYSize);
