@@ -11,7 +11,6 @@
 //*****************************************************************************
 #include <Arduino.h>    //Librería de Arduino
 #include <Ultrasonic.h> //Librería de sensor ultrasónico
-//#include <SPI.h>        //Librería SPI
 
 //*****************************************************************************
 //Definicion etiquetas
@@ -21,23 +20,37 @@
 #define PIN_TRIGGER 26
 #define PIN_ECHO 27
 
-//Pines para conexion SPI
-#define MOSI 23
-#define MISO 19
-#define SCK 18
-#define CS 5
+//Prescaler
+#define prescaler 80
+
+//Temporizadores
+hw_timer_t *timer = NULL;
+
+
 //*****************************************************************************
 //Prototipos de funcion
 //*****************************************************************************
+void IRAM_ATTR ISRTimer0();
 void getDistance(void);
 void uart(void);
+void configurarTimer(void);
+
+
 //*****************************************************************************
 //Varibles globales
 //*****************************************************************************
 int distancia = 0; //Distancia tomada por el sensor
-int bandera = 1;
+int bandera = 1; //bandera para comunicación UART TivaC con Esp32
+boolean banderaUART = false; //bandera para comunicacion UART ESP32 con computadora
 Ultrasonic ultrasonic(PIN_TRIGGER, PIN_ECHO); //Sensor ultrasónico
-//SPIClass SPI1(VSPI); //Tipo de SPI
+
+//*****************************************************************************
+//ISR: interrupciones
+//*****************************************************************************
+void IRAM_ATTR ISRTimer0() //interrupción para timer
+{
+  banderaUART = true;
+}
 
 //*****************************************************************************
 //Configuracion
@@ -47,6 +60,9 @@ void setup()
   //Configuración Serial
   Serial.begin(115200);
   Serial2.begin(115200);
+
+  //Temporizadores
+  configurarTimer();
 }
 
 //*****************************************************************************
@@ -54,12 +70,38 @@ void setup()
 //*****************************************************************************
 void loop()
 {
-  getDistance();
-  //Serial.print("\nLa distancia medida es de: ");
-  //Serial.print(distancia);
-  //Serial.print(" cm");
-  //Serial.println(bandera);
-  uart();
+  getDistance(); //tomar distancia
+  uart(); //UART con TivaC
+  
+  if (banderaUART == true) //Si ya pasaron 3 segundos, imprime la distancia
+  {
+    banderaUART = false;
+    Serial.print("\nLa distancia medida es de: ");
+    Serial.print(distancia);
+    Serial.print(" cm");
+  }
+}
+
+//******************************************************************************
+// Configuración Timers
+//******************************************************************************
+void configurarTimer(void) //Timer para displays
+{
+  //Fosc = 80MHz = 80,000,000 Hz
+  //Fosc / Prescaler = 80,000,000 / 80 = 1,000,000
+  //Tosc = 1/Fosc = 1uS
+
+  //Timer 0, prescaler = 80, flanco de subida
+  timer = timerBegin(0, prescaler, true);
+
+  //Handler de la interrupción
+  timerAttachInterrupt(timer, &ISRTimer0, true);
+
+  //Tic = 1uS    3s= 3000000uS
+  timerAlarmWrite(timer, 3000000, true);
+
+  //Inicia alarma
+  timerAlarmEnable(timer);
 }
 
 //*****************************************************************************
